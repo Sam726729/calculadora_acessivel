@@ -1,0 +1,99 @@
+<script>
+  const visor = document.getElementById('visor');
+  let expressao = '';
+
+  // Dicionário de conversão de caracteres para Braille (Unicode)
+  const mapaBraille = {
+    '0': '⠼⠚', '1': '⠼⠁', '2': '⠼⠃', '3': '⠼⠉', '4': '⠼⠙',
+    '5': '⠼⠑', '6': '⠼⠋', '7': '⠼⠛', '8': '⠼⠓', '9': '⠼⠊',
+    '+': '⠬', '-': '⠤', '*': '⠡', '/': '⠌', '.': '⠂'
+  };
+
+  // Função para converter texto comum para símbolos Braille
+  function converterParaBraille(texto) {
+    return texto.toString().split('').map(char => mapaBraille[char] || char).join('');
+  }
+
+  // Função para fazer o navegador falar um texto
+  function falar(texto) {
+    window.speechSynthesis.cancel();
+    const fala = new SpeechSynthesisUtterance(texto);
+    fala.lang = 'pt-BR';
+    fala.rate = 1.2;
+    window.speechSynthesis.speak(fala);
+  }
+
+  function atualizarVisor() {
+    if (expressao === '') {
+      visor.innerText = '0 (⠀)';
+      visor.setAttribute('aria-label', 'Resultado: 0');
+      return;
+    }
+
+    const textoBraille = converterParaBraille(expressao);
+    // Exibe o texto normal e o equivalente em Braille lado a lado
+    visor.innerText = `${expressao} (${textoBraille})`;
+    visor.setAttribute('aria-label', `Resultado: ${expressao}`);
+  }
+
+  function adicionarCaractere(caractere) {
+    if (expressao === '0' && caractere !== '.') {
+      expressao = caractere;
+    } else {
+      expressao += caractere;
+    }
+    
+    atualizarVisor();
+
+    let textoFalar = caractere;
+    if (caractere === '+') textoFalar = 'mais';
+    if (caractere === '-') textoFalar = 'menos';
+    if (caractere === '*') textoFalar = 'vezes';
+    if (caractere === '/') textoFalar = 'dividido por';
+    if (caractere === '.') textoFalar = 'ponto';
+
+    falar(textoFalar);
+  }
+
+  function limparVisor() {
+    expressao = '';
+    atualizarVisor();
+    falar('Limpo');
+  }
+
+  function calcular() {
+    try {
+      if (!expressao) return;
+
+      const resultado = eval(expressao);
+      
+      if (!isFinite(resultado)) {
+        visor.innerText = 'Erro';
+        falar('Erro: divisão por zero');
+        expressao = '';
+        return;
+      }
+
+      expressao = resultado.toString();
+      atualizarVisor();
+      falar(`Resultado: ${resultado}`);
+    } catch (e) {
+      visor.innerText = 'Erro';
+      falar('Erro na expressão');
+      expressao = '';
+    }
+  }
+
+  document.addEventListener('keydown', (event) => {
+    const tecla = event.key;
+
+    if (!isNaN(tecla) || ['+', '-', '*', '/', '.'].includes(tecla)) {
+      adicionarCaractere(tecla);
+    } else if (tecla === 'Enter') {
+      event.preventDefault();
+      calcular();
+    } else if (tecla === 'Backspace' || tecla === 'Escape') {
+      limparVisor();
+    }
+  });
+</script>
